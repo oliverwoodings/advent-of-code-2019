@@ -12,7 +12,8 @@ module.exports = async function fetchProgram (day) {
   const { data } = await axios.get(`https://adventofcode.com/2019/day/${day}/input`, {
     headers: {
       cookie: `session=${config.sessionCookie};`
-    }
+    },
+    transformResponse: (res) => res
   })
   await writeToCache(day, data)
   return data.trim()
