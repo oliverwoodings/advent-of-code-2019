@@ -1,30 +1,62 @@
-const readline = require('readline')
 const fs = require('fs')
 const path = require('path')
+const fetchProgram = require('../common/fetchProgram')
+const createComputer = require('../common/computer')
 
-const grid = []
+run()
 
-const left = [5, 2]
-const right = [5, 2]
-write(left)
-write(right)
+async function run () {
+  const program = await fetchProgram(19)
 
-let i = 0;
-while (1) {
-  left[0] += 2
-  left[1]++
-  write(left)
-  if (i >= 99) {
-    right[0] += 3
-    right[1]++
-    write(right)
-    if (right[0] - 99 >= left[0]) {
-      print([left[0], right[1]])
-      break
+  const rows = []
+
+  let xRange = [5, 5]
+  let y = 2
+  while (1) {
+    const xRangeNext = []
+    let x = xRange[0]
+    while (1) {
+      const output = await getOutput(program, [x, y])
+      if (output && !xRangeNext.length) {
+        xRangeNext.push(x)
+        if (xRange[1] > x) {
+          x = xRange[1]
+        }
+      } else if (!output && xRangeNext.length) {
+        xRangeNext.push(x - 1)
+        rows[y] = xRangeNext
+        xRange = xRangeNext
+        checkFit()
+        break
+      }
+      x++
     }
-  } else {
-    i++
+    y++
   }
+
+  function checkFit () {
+    const row = rows[y - 99]
+    if (!row) return
+    if (row[1] - 100 >= rows[y][0]) {
+      const point = [row[1] - 100 - 2, y - 99 - 1]
+      print(rows, point)
+      console.log('BOOM', point, row, point[0] * 10000 + point[1])
+      process.exit(0)
+    }
+  }
+}
+
+async function getOutput (program, input) {
+  return new Promise((resolve) => {
+    let output = null
+    const computer = createComputer(
+      [...program],
+      () => input.shift(),
+      (value) => { output = value },
+      () => resolve(output)
+    )
+    computer.compute()
+  })
 }
 
 function write ([x, y]) {
@@ -34,19 +66,17 @@ function write ([x, y]) {
   grid[y][x] = '#'
 }
 
-
-function print (point) {
-  console.log('BOOM', point, point[0] * 10000 + point[1])
+function print (rows, point) {
   let maxLineLength = 0
   let buffer = []
-  for (let y = 0; y < grid.length; y++) {
-    const row = grid[y]
+  for (let y = 0; y < rows.length; y++) {
+    const row = rows[y]
     let output = ''
     if (row) {
-      maxLineLength = Math.max(maxLineLength, row.length)
-      for (let x = 0; x < maxLineLength; x++) {
+      maxLineLength = Math.max(maxLineLength, row[1])
+      for (let x = 0; x <= maxLineLength; x++) {
         const inRect = (point[0] <= x && x <= point[0] + 99 && point[1] <= y && y <= point[1] + 99)
-        output += inRect ? '@' : row[x] || ' '
+        output += x < row[0] ? ' ' : (inRect ? '@' : '#')
       }
     }
     buffer.push(output)
